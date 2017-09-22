@@ -7,6 +7,7 @@ import org.apache.log4j.Logger;
 
 import java.sql.Date;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -86,7 +87,7 @@ public class CopyJob extends AbstractJob {
                             , getTargetTable()
                             , Joiner.on(", ").join(columns)
                             , getSource()
-                            , Joiner.on(", ").join(columns)  //TODO column mapping
+                            , Joiner.on(", ").join(mapColumnNames(columns))
                             , getSourceTable()
                             , getTargetTable()
                     );
@@ -98,9 +99,9 @@ public class CopyJob extends AbstractJob {
                             , getTargetTable()
                             , Joiner.on(", ").join(columns)
                             , getSource()
-                            , Joiner.on(", ").join(columns)  //TODO column mapping
+                            , Joiner.on(", ").join(mapColumnNames(columns))
                             , getSourceTable()
-                            , getIncremetBy()  //TODO column mapping
+                            , mapColumnName(getIncremetBy())
                             , lastKeyStr
                             , getTargetTable()
                     );
@@ -115,7 +116,7 @@ public class CopyJob extends AbstractJob {
                         , getTargetTable()
                         , Joiner.on(", ").join(columns)
                         , getSource()
-                        , Joiner.on(", ").join(columns)  //TODO column mapping
+                        , Joiner.on(", ").join(mapColumnNames(columns))
                         , getSourceTable()
                         , getTargetTable()
                 );
@@ -127,6 +128,27 @@ public class CopyJob extends AbstractJob {
         }
     }
 
+    public List<String> mapColumnNames(List<String> columns) {
+
+        List<String> ret = new ArrayList<String>();
+
+        for(String col : columns) {
+            ret.add(mapColumnName(col));
+        }
+
+        return ret;
+    }
+
+    private String mapColumnName(String col) {
+        String propKey = "renamecolumn." + col;
+        if(!this.jobProps.containsKey(propKey)) {
+            return col;
+        }
+
+        return this.jobProps.getString(propKey);
+    }
+
+
     String getTargetTable() {
         return this.jobProps.getString(TARGET_TABLE);
     }
@@ -136,6 +158,8 @@ public class CopyJob extends AbstractJob {
                 this.jobProps.containsKey(SOURCE_TABLE) &&
                 this.jobProps.containsKey(SOURCE);
     }
+
+
 
     public String getSource() {
         return this.jobProps.getString(SOURCE);
