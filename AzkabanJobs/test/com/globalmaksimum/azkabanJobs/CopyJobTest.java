@@ -167,6 +167,36 @@ public class CopyJobTest {
         verify(conn).close();
     }
 
+    @Test
+    public void mappedMultipleColumns() throws Exception {
+        String jobId = "test job";
+        String table = "extr.test_table";
+
+        Props sysProps = new Props();
+
+        Props jobProps = new Props();
+        jobProps.put("target_table", table);
+        jobProps.put("source_table", "test_table");
+        jobProps.put("source", "extr");
+        jobProps.put("renamecolumn.AA", "EE");
+        jobProps.put("renamecolumn.CC", "FF");
+
+        DBConn conn = mock(DBConn.class);
+        List<String> columns = new ArrayList<String>();
+        columns.add("AA");
+        columns.add("BB");
+        columns.add("CC");
+        columns.add("DD");
+        when(conn.<String>getList("select column_name from columns where table_schema || '.' || table_name = ?", "extr.test_table")).thenReturn(columns);
+
+        CopyJob job = new CopyJob(jobId, sysProps, jobProps, testLogger);
+        job.runWithConn(conn);
+
+        verify(conn).runSql("TRUNCATE TABLE extr.test_table;");
+        verify(conn).runSql("COPY extr.test_table (AA, BB, CC, DD) WITH SOURCE JDBCSource() PARSER JDBCLoader(connect='extr', query='SELECT EE, BB, FF, DD FROM test_table') DIRECT ENFORCELENGTH REJECTMAX 1 STREAM NAME 'extr.test_table';");
+        verify(conn).close();
+    }
+
 
     @Test
     public void mappedColumnsWhenIncremetal() throws Exception {
