@@ -23,10 +23,8 @@ public class HadoopSecureBeelineWrapper {
         hiveScript = jobProps.getProperty("hive.script");
 
         if(HadoopSecureWrapperUtils.shouldProxy(jobProps)) {
-            logger.info("should proxy true my log");
             String tokenFile = System.getenv(HADOOP_TOKEN_FILE_LOCATION);
             System.setProperty("mapreduce.job.credentials.binary", tokenFile);
-            System.setProperty("hive.root.logger","DEBUG,console");
             UserGroupInformation proxyUser =
                     HadoopSecureWrapperUtils.setupProxyUser(jobProps, tokenFile, logger);
             proxyUser.doAs(new PrivilegedExceptionAction<Void>() {
@@ -43,9 +41,6 @@ public class HadoopSecureBeelineWrapper {
 
     private static void runBeeline(String[] args) throws IOException {
         BeeLine beeline = new BeeLine();
-        for (int i = 0; i < args.length; i++) {
-            System.out.println(i+" "+args[i]);
-        }
         int status = beeline.begin(args,null);
         beeline.close();
         if(status!=0)

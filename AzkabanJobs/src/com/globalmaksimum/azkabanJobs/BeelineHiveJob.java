@@ -131,8 +131,6 @@ public class BeelineHiveJob extends JavaProcessJob {
             args += " " + typeSysJVMArgs;
         }
 
-        args += " -Dlog4j.configuration=beeline-log4j.properties";
-
         if (shouldProxy) {
             info("Setting up secure proxy info for child process");
             String secure;
@@ -209,8 +207,6 @@ public class BeelineHiveJob extends JavaProcessJob {
 
         list.add("-a");
         list.add("delegationToken");
-
-        list.add("--verbose=true");
 
         return StringUtils.join((Collection<String>) list, " ");
     }
