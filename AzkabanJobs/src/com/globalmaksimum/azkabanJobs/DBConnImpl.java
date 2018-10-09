@@ -10,17 +10,26 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 /**
  * Created by Vace Kupecioglu on 12.01.2017.
  */
 public abstract class DBConnImpl implements DBConn {
-    Connection conn;
-    String host;
-    String user;
-    String pass;
-    String db;
-    String backupServerNode;
+    protected Connection conn;
+    private String host;
+    private String db;
+    private Properties connectionProps;
+
+    @Override
+    public Properties getConnectionProps() {
+        return connectionProps;
+    }
+
+    public void setConnectionProps(Properties connectionProps) {
+        this.connectionProps = connectionProps;
+    }
+
 
     @Override
     public String getHost() {
@@ -32,24 +41,6 @@ public abstract class DBConnImpl implements DBConn {
     }
 
     @Override
-    public String getUser() {
-        return user;
-    }
-
-    public void setUser(String user) {
-        this.user = user;
-    }
-
-    @Override
-    public String getPass() {
-        return pass;
-    }
-
-    public void setPass(String pass) {
-        this.pass = pass;
-    }
-
-    @Override
     public String getDb() {
         return db;
     }
@@ -58,29 +49,15 @@ public abstract class DBConnImpl implements DBConn {
         this.db = db;
     }
 
-    @Override
-    public String getBackupServerNode() { return backupServerNode; }
-
-    public void setBackupServerNode(String backupServerNode) { this.backupServerNode = backupServerNode; }
-
-    public DBConnImpl(String user, String pass, String host, String db) {
-        this.setUser(user.trim());
-        this.setPass(pass.trim());
+    public DBConnImpl(String host, String db,Properties props) {
         this.setHost(host.trim());
         this.setDb(db.trim());
-    }
-
-    public DBConnImpl(String user, String pass, String host, String db, String backupServerNode) {
-        this.setUser(user.trim());
-        this.setPass(pass.trim());
-        this.setHost(host.trim());
-        this.setDb(db.trim());
-        this.setBackupServerNode(backupServerNode.trim());
+        this.setConnectionProps(props);
     }
 
     @Override
     public void close() {
-        if(conn != null) {
+        if (conn != null) {
             DbUtils.closeQuietly(this.conn);
             conn = null;
         }
@@ -89,7 +66,7 @@ public abstract class DBConnImpl implements DBConn {
     @Override
     public void runSql(String sql) throws SQLException {
         boolean closeWhenReturned = false;
-        if(conn == null) {
+        if (conn == null) {
             this.open();
             closeWhenReturned = true;
         }
@@ -98,19 +75,19 @@ public abstract class DBConnImpl implements DBConn {
             stmt = conn.createStatement();
             stmt.execute(sql);
             conn.commit();
-        }
-        finally {
+        } finally {
             DbUtils.closeQuietly(stmt);
-            if(closeWhenReturned) {
+            if (closeWhenReturned) {
                 close();
             }
         }
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public <T> List<T> getList(String sql, Object... params) throws SQLException {
         boolean closeWhenReturned = false;
-        if(conn == null) {
+        if (conn == null) {
             this.open();
             closeWhenReturned = true;
         }
@@ -120,8 +97,8 @@ public abstract class DBConnImpl implements DBConn {
             return qr.query(conn, sql, new ResultSetHandler<List<T>>() {
                 @Override
                 public List<T> handle(ResultSet resultSet) throws SQLException {
-                    ArrayList<T> res = new ArrayList<T>();
-                    while(resultSet.next()) {
+                    ArrayList<T> res = new ArrayList<>();
+                    while (resultSet.next()) {
                         T t = (T) resultSet.getObject(1);
                         res.add(t);
                     }
@@ -130,7 +107,7 @@ public abstract class DBConnImpl implements DBConn {
             }, params);
 
         } finally {
-            if(closeWhenReturned) {
+            if (closeWhenReturned) {
                 close();
             }
         }

@@ -74,8 +74,8 @@ public class BeelineHiveJob extends JavaProcessJob {
         HadoopConfigurationInjector.prepareResourcesToInject(getJobProps(),
                 getWorkingDirectory());
 
+        userToProxy = getJobProps().getString("user.to.proxy",System.getProperty("user.name"));
         if (shouldProxy && obtainTokens) {
-            userToProxy = getJobProps().getString("user.to.proxy");
             getLog().info("Need to proxy. Getting tokens.");
             // get tokens in to a file, and put the location in props
             Props props = new Props();
@@ -164,11 +164,7 @@ public class BeelineHiveJob extends JavaProcessJob {
         list.add(getJobProps().getString(HIVE_URL));
 
         list.add("-n");
-        if(shouldProxy){
-            list.add(userToProxy);
-        }else{
-            list.add(System.getProperty("user.name"));
-        }
+        list.add(userToProxy);
 
         list.add("-p");
         list.add("DUMMY");
@@ -205,8 +201,10 @@ public class BeelineHiveJob extends JavaProcessJob {
         list.add("-f");
         list.add(getScript());
 
-        list.add("-a");
-        list.add("delegationToken");
+        if(shouldProxy) {
+            list.add("-a");
+            list.add("delegationToken");
+        }
 
         return StringUtils.join((Collection<String>) list, " ");
     }

@@ -44,6 +44,6 @@ public class HadoopSecureBeelineWrapper {
         int status = beeline.begin(args,null);
         beeline.close();
         if(status!=0)
-            System.exit(0);
+            System.exit(status);
     }
 }

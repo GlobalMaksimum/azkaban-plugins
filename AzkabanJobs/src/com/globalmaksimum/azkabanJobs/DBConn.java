@@ -2,6 +2,7 @@ package com.globalmaksimum.azkabanJobs;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Properties;
 
 /**
  * Created by Vace Kupecioglu on 24.10.2016.
@@ -9,13 +10,9 @@ import java.util.List;
 public interface DBConn {
     String getHost();
 
-    String getUser();
-
-    String getPass();
-
     String getDb();
 
-    String getBackupServerNode();
+    Properties getConnectionProps();
 
     void open() throws SQLException;
 

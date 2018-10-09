@@ -1,5 +1,7 @@
 package com.globalmaksimum.azkabanJobs;
 
+import org.apache.commons.lang3.StringUtils;
+
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Properties;
@@ -9,12 +11,26 @@ import java.util.Properties;
  */
 public class VerticaConn extends DBConnImpl {
 
-    public VerticaConn(String user, String pass, String host, String db) {
-        super(user, pass, host, db,"");
+    public VerticaConn(String user, String pass, String host, String db, String backupServerNode, String service) {
+        super(host, db, createConnProps(user, pass, host, backupServerNode, service));
     }
 
-    public VerticaConn(String user, String pass, String host, String db, String backupServerNode) {
-        super(user, pass, host, db, backupServerNode);
+    private static Properties createConnProps(String user, String pass, String host, String backupServerNode, String service) {
+        Properties props = new Properties();
+        props.setProperty("user", user);
+        if (org.apache.commons.lang3.StringUtils.isEmpty(pass)) {
+            // kerberos config
+            props.setProperty("KerberosServiceName", service);
+            props.setProperty("KerberosHostName", host);
+            props.setProperty("JAASConfigName", "verticajdbc");
+        } else {
+            props.setProperty("password", pass);
+        }
+        if (!StringUtils.isEmpty(backupServerNode)) {
+            props.put("BackupServerNode", backupServerNode);
+        }
+        props.put("connectionLoadBalance", "true");
+        return props;
     }
 
     @Override
@@ -22,18 +38,7 @@ public class VerticaConn extends DBConnImpl {
         if (this.conn != null) {
             this.close();
         }
-
-        Properties connProp = new Properties();
-        connProp.put("user", getUser());
-        connProp.put("password", getPass());
-
-        String backupServerNode = getBackupServerNode();
-        if(!backupServerNode.equals("")) {
-            connProp.put("BackupServerNode", getBackupServerNode());
-        }
-
-        connProp.put("connectionLoadBalance", "true");
-        conn = DriverManager.getConnection("jdbc:vertica://" + getHost() + ":5433/" + getDb(), connProp);
+        conn = DriverManager.getConnection("jdbc:vertica://" + getHost() + ":5433/" + getDb(), getConnectionProps());
         conn.setAutoCommit(false);
     }
 }

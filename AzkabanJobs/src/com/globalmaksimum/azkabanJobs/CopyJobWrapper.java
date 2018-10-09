@@ -1,6 +1,5 @@
 package com.globalmaksimum.azkabanJobs;
 
-import azkaban.jobExecutor.AbstractJob;
 import azkaban.utils.Props;
 import com.google.common.base.Joiner;
 import org.apache.log4j.Logger;
@@ -13,7 +12,8 @@ import java.util.List;
 /**
  * Created by Vace Kupecioglu on 24.10.2016.
  */
-public class CopyJob extends AbstractJob {
+public class CopyJobWrapper {
+    private static final Logger logger = Logger.getRootLogger();
     public static final String WORKING_DIR = "working.dir";
     public static final String FILE = "file";
     public static final String TARGET_TABLE = "target_table";
@@ -27,25 +27,32 @@ public class CopyJob extends AbstractJob {
     public static final String COLUMNS_SQL = "select column_name from columns where table_schema || '.' || table_name = ?";
 
     Props jobProps;
-    Props sysProps;
+    private String jobId;
 
-    public CopyJob(String jobId, Props sysProps, Props jobProps, Logger log) {
-        super(jobId, log);
+    public CopyJobWrapper(String jobId, Props jobProps) {
+        this.jobId = jobId;
         this.jobProps = jobProps;
-        this.sysProps = sysProps;
     }
 
-    @Override
+    public static void main(String[] args) throws Exception {
+        CopyJobWrapper copyJobWrapper = new CopyJobWrapper("empty", new Props(null, Utils.loadAzkabanProps()));
+        copyJobWrapper.run();
+    }
+
     public void run() throws Exception {
-        if(!areCopyParamsSet()) {
+        System.out.println("Running with jobId " + this.jobId);
+        String db = jobProps.getString("db", "vertica").trim();
+        if (!areCopyParamsSet()) {
             throw new Exception("Not all required parameters are set");
         }
 
         VerticaConn conn = new VerticaConn(
-                sysProps.getString("db.vertica.user"),
-                sysProps.getString("db.vertica.pass"),
-                sysProps.getString("db.vertica.host"),
-                sysProps.getString("db.vertica.db")
+                jobProps.getString("db." + db + ".user"),
+                jobProps.getString("db." + db + ".pass", ""),
+                jobProps.getString("db." + db + ".host"),
+                jobProps.getString("db." + db + ".db"),
+                jobProps.getString("db." + db + ".backupServerNode", ""),
+                jobProps.getString("db." + db + ".service")
         );
         runWithConn(conn);
     }
@@ -61,11 +68,11 @@ public class CopyJob extends AbstractJob {
 
             if (isIncremental()) {
                 String colType = conn.getFirst(COLUMN_TYPE_SQL, getTargetTable(), getIncremetBy());
-                if(colType == null) {
+                if (colType == null) {
                     throw new Exception(String.format("Count not find column %s for table %s.", getIncremetBy(), getTargetTable()));
                 }
                 String lastKeyStr = null;
-                if("int".equals(colType)) {
+                if ("int".equals(colType)) {
                     Long lastKey = conn.getFirst(String.format(SELECT_MAX_FROM, getIncremetBy(), getTargetTable()));
                     if (lastKey != null) {
                         lastKeyStr = lastKey.toString();
@@ -81,7 +88,7 @@ public class CopyJob extends AbstractJob {
                 }
 
                 if (lastKeyStr == null) {
-                    info(String.format("Max value for %s is null. Will copy whole table.", getIncremetBy()));
+                    logger.info(String.format("Max value for %s is null. Will copy whole table.", getIncremetBy()));
                     String copyStmt = String.format(
                             COPY_ALL_SQL
                             , getTargetTable()
@@ -91,7 +98,7 @@ public class CopyJob extends AbstractJob {
                             , getSourceTable()
                             , getTargetTable()
                     );
-                    info(copyStmt);
+                    logger.info(copyStmt);
                     conn.runSql(copyStmt);
                 } else {
                     String copyStmt = String.format(
@@ -105,11 +112,11 @@ public class CopyJob extends AbstractJob {
                             , lastKeyStr
                             , getTargetTable()
                     );
-                    info(copyStmt);
+                    logger.info(copyStmt);
                     conn.runSql(copyStmt);
                 }
             } else {
-                info(String.format("Truncating table %s", getTargetTable()));
+                logger.info(String.format("Truncating table %s", getTargetTable()));
                 conn.runSql(String.format("TRUNCATE TABLE %s;", getTargetTable()));
                 String copyStmt = String.format(
                         COPY_ALL_SQL
@@ -120,7 +127,7 @@ public class CopyJob extends AbstractJob {
                         , getSourceTable()
                         , getTargetTable()
                 );
-                info(copyStmt);
+                logger.info(copyStmt);
                 conn.runSql(copyStmt);
             }
         } finally {
@@ -132,7 +139,7 @@ public class CopyJob extends AbstractJob {
 
         List<String> ret = new ArrayList<String>();
 
-        for(String col : columns) {
+        for (String col : columns) {
             ret.add(mapColumnName(col));
         }
 
@@ -141,7 +148,7 @@ public class CopyJob extends AbstractJob {
 
     private String mapColumnName(String col) {
         String propKey = "renamecolumn." + col;
-        if(!this.jobProps.containsKey(propKey)) {
+        if (!this.jobProps.containsKey(propKey)) {
             return col;
         }
 
@@ -158,7 +165,6 @@ public class CopyJob extends AbstractJob {
                 this.jobProps.containsKey(SOURCE_TABLE) &&
                 this.jobProps.containsKey(SOURCE);
     }
-
 
 
     public String getSource() {

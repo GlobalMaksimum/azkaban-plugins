@@ -9,8 +9,15 @@ import java.util.Properties;
  */
 public class MySQLConn extends DBConnImpl {
 
+    private static Properties createConnProps(String user, String pass) {
+        Properties connProp = new Properties();
+        connProp.put("user", user);
+        connProp.put("password", pass);
+        return connProp;
+    }
+
     public MySQLConn(String user, String pass, String host, String db) {
-        super(user, pass, host, db);
+        super(host, db, createConnProps(user, pass));
     }
 
     @Override
@@ -18,11 +25,7 @@ public class MySQLConn extends DBConnImpl {
         if (this.conn != null) {
             this.close();
         }
-
-        Properties connProp = new Properties();
-        connProp.put("user", getUser());
-        connProp.put("password", getPass());
-        conn = DriverManager.getConnection("jdbc:mysql://" + getHost() + ":3306/" + getDb(), connProp);
+        conn = DriverManager.getConnection("jdbc:mysql://" + getHost() + ":3306/" + getDb(), getConnectionProps());
         conn.setAutoCommit(false);
     }
 }
